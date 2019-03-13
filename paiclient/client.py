@@ -8,8 +8,6 @@ __default_port_table__ = {
 }
 
 
-def get_ip(s: str):
-    return re.compile ('\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}').search(os.environ['PAI_DEFAULT_FS_URI']).group()
 
 
 class PAI:
