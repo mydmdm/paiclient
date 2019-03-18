@@ -21,7 +21,9 @@ def hello_world():
 
 
 def run_commands(commands: list):
-    os.system(' && '.join(commands))
+    cmds = ' && '.join(commands)
+    print(cmds)
+    os.system(cmds)
 
 
 def shuffle_text(text: str, seed=None, seed_env: str=None):
@@ -35,24 +37,35 @@ def shuffle_text(text: str, seed=None, seed_env: str=None):
     return ''.join(s)
 
 
-def shffle_back_text(text: str, seed=None, seed_env: str=None):
+def shuffle_back_text(text: str, seed=None, seed_env: str=None):
     "inverse function of shuffle_text"
     if seed is None and seed_env is not None:
         seed = os.environ[seed_env]
-    if seed is not None:
-        random.seed(seed)
-        
+    assert seed is not None, 'cannot shuffle back without specifying a seed'
+    random.seed(seed)
+    idx = list(range(len(text)))
+    random.shuffle(idx)
+    idx_hook = {origin:shuffled for shuffled,origin in enumerate(idx)}
+    s =[chr(text[idx_hook[i]]) for i in range(len(text))]
+    return ''.join(s)
+
         
 # commands for git
-def git_config(user: str, email: str, keystr: str=None):
+def git_config(user: str, email: str, keystr: str=None, seed_env: str='RANDOM_KEY'):
     run_commands([
         'git config --global user.name %s' % (user),
         'git config --global user.email %s' % (email),
     ])
     if keystr is not None:
-        os.makedirs('~/.ssh', exist_ok=True)
-        with open('~/.ssh/id_rsa', 'w') as fn:
-            fn.write(key)
+        ssh_dir = os.path.expanduser('~/.ssh')
+        os.makedirs(ssh_dir, exist_ok=True)
+        key_file = os.path.join(ssh_dir, 'id_rsa')
+        with open(key_file, 'w') as fn:
+            fn.write(shuffle_back_text(keystr, seed_env=seed_env))
+        run_commands([
+            'chmod 400 {}'.format(key_file),
+            'ssh -o StrictHostKeyChecking=no git@github.com',
+        ])
     return 'git configured'
 
 # commands for hdfs operations
@@ -104,7 +117,7 @@ def bootloader(bootstraps: list):
         args = dict(b)
         func = args.pop(keyword)
         result = getobj(func)(**args)
-        print(result)
+        print(func, result)
         
 
 if __name__ == '__main__':
