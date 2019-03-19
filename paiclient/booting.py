@@ -2,12 +2,17 @@ import os
 import sys
 import re
 import importlib
+import logging
 import shutil
 import random
 import simplejson as json
 from hdfs import InsecureClient
 from functools import partial    
+from argparse import ArgumentParser
 
+logging.basicConfig(level=logging.INFO)
+
+logger = logging.getLogger('SysInfo')
 
 # common
 def getobj(name: str):
@@ -46,7 +51,10 @@ def shuffle_back_text(text: str, seed=None, seed_env: str=None):
     idx = list(range(len(text)))
     random.shuffle(idx)
     idx_hook = {origin:shuffled for shuffled,origin in enumerate(idx)}
-    s =[chr(text[idx_hook[i]]) for i in range(len(text))]
+    if isinstance(text, str):
+        s =[text[idx_hook[i]] for i in range(len(text))]
+    else:
+        s =[chr(text[idx_hook[i]]) for i in range(len(text))]
     return ''.join(s)
 
         
@@ -66,8 +74,9 @@ def git_config(user: str, email: str, keystr: str=None, seed_env: str='RANDOM_KE
             'chmod 400 {}'.format(key_file),
             'ssh -o StrictHostKeyChecking=no git@github.com',
         ])
-    return 'git configured'
+    logger.info('git configured')
 
+    
 # commands for hdfs operations
 def get_ip(s: str):
     "get the ipv4 string from the input str"
@@ -101,7 +110,8 @@ def hdfs_download(hdfs_path: str, local_path: str, client_args: dict={}, trans_a
         hdfs_transfer(client, hdfs_file, local_file, 'download', **trans_args)
     if extract_in is not None:
         shutil.unpack_archive(local_file, extract_in)
-    return 'hdfs file downloaded %s -> %s' %(hdfs_path, local_path)
+    logger.info('hdfs file downloaded %s -> %s' %(hdfs_path, local_path))
+    return local_file
     
 def hdfs_transfer(client, hdfs_path: str, local_path: str, trans: str='download', **kwargs):
     assert trans in ['download', 'upload'], 'unsupported transfer type {}'.format(trans)
@@ -116,12 +126,19 @@ def bootloader(bootstraps: list):
         assert isinstance(b, dict) and keyword in b, 'bootloader not found: {}'.format(b)
         args = dict(b)
         func = args.pop(keyword)
-        result = getobj(func)(**args)
-        print(func, result)
-        
+        logger.info('bootloader <- {}'.format(func))
+        getobj(func)(**args)
 
+        
 if __name__ == '__main__':
     os.system('pwd')
-    assert len(sys.argv) == 2, 'please use like `python -m paiclient.booting <your/bootstraps>.json`'
-    bootstraps = json.load(sys.argv[1])
+    parser = ArgumentParser('commands to booting the job')
+    parser.add_argument('--json', help='specify a local json file as bootstraps')
+    parser.add_argument('--hdfs', help='specify a hdfs file as the bootstraps')
+    args = parser.parse_args()
+    if args.hdfs is not None:
+        logger.info('downloading bootstraps ..')
+        args.json = hdfs_download(args.hdfs, os.path.expanduser('~'), trans_args={'overwrite': True})
+    with open(args.json, 'r') as fn:
+        bootstraps = json.load(fn)
     bootloader(bootstraps)
