@@ -5,6 +5,7 @@ import importlib
 import logging
 import shutil
 import random
+import subprocess
 import simplejson as json
 from hdfs import InsecureClient
 from functools import partial    
@@ -57,7 +58,22 @@ def shuffle_back_text(text: str, seed=None, seed_env: str=None):
         s =[chr(text[idx_hook[i]]) for i in range(len(text))]
     return ''.join(s)
 
-        
+
+def pip_install(
+    packages # type: Union[list[str], str]
+    ):
+    """
+    install the packages with pip
+    
+    Args:
+        packages (str or list[str]): package name (or names)
+    """
+    if isinstance(packages, str):
+        packages = [packages]
+    for p in packages:
+        subprocess.run([sys.executable, '-m', 'pip', 'install', '-U', p])
+
+
 # commands for git
 def git_config(user: str, email: str, keystr: str=None, seed_env: str='RANDOM_KEY'):
     run_commands([

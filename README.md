@@ -4,7 +4,9 @@ This is a proof-of-concept client (SDK) of `python` for the [OpenPAI](www.github
 
 By providing a bag of APIs, the SDK can facilitate users access `OpenPAI` services or establish high level applications scenarios (e.g. for education).
 
-## Basic `OpenPAI` services
+## Services
+
+### Core services
 
 The SDK provide a class `OpenPAIClient` to let users access services. The client can be constructed by specifying the required information (in user local environment), or reading them via `os.environ` (easiest way inside job container).
 
@@ -12,18 +14,18 @@ The SDK provide a class `OpenPAIClient` to let users access services. The client
 - [ ] submit a job
 - [ ] list jobs and status
 
-## Storage
+### Storage
 
 The SDK provides generalized interface to access storage, supporting basic operations like `list`, `download`, `upload`. The API would know storage protocol and root information through the client or environment variables.
 
 - `HDFS`
     - [x] list / download / upload
 
-## Logging
+### Logging
 
 The SDK may provide a logging service. Maybe it would hijack `logging` package to let user without modifying.
 
-## `Jupyter` notebook based interactive mode
+### `Jupyter` notebook based interactive mode
 
 Interactive mode is an important feature that for users, now the solution is to start a long running job and connect it with `ssh` or better `jupyter` notebook. This is quite convenient and user can focus on his/her own codes and let `OpenPAI` to handle the environment problems. This solutions is suitable for the scenarios such as
 
@@ -36,6 +38,13 @@ Here we give a solution named **`resubmit`** method. User may prepare the codes 
 
 To implement more complicated functions, the SDK can provide a method to let code know its running environment like local (outside `OpenPAI`), debug (interactive) job container or normal (batch) job container. With the environment information and / or task information like role, user can write only one copy of code, and let it runs partially according to environment.
 
-## Deployment
+### Deployment
 
 As we know, the `OpenPAI` itself is providing a protocol based deployment method in [PR](). Here we talk this topic again is that it could be realized in the same way like `resubmit`. 
+
+## Examples
+
+### Notebook tutorials
+
+- Submit from local notebook
+
