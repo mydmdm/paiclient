@@ -5,6 +5,8 @@ import ipykernel
 import requests
 from subprocess import check_call
 
+from paiclient.core import Client, Job
+
 #try:  # Python 3
 #    from urllib.parse import urljoin
 #except ImportError:  # Python 2
@@ -45,4 +47,23 @@ def convert_to_script(nb_file: str):
     name, ext = os.path.splitext(fname)
     assert ext == '.ipynb', '{} is not ipython notebook'.format(nb_file)
     check_call(['ipython', 'nbconvert', '--to', 'script', fname], cwd=d)
-    return name + '.py'
+    return name
+
+
+def submit_notebook(nb_file: str, pai_json: str, image: str, remote_root: str, resources: dict={}, sources: list=[]):
+    """
+    submit a job with current notebook
+    
+    Args:
+        nb_file (str): [description]
+        pai_json (str): [description]
+        resources (dict, optional): Defaults to {}. [description]
+    """
+    name = convert_to_script(nb_file)
+    print('convert {} to {}.py'.format(nb_file, name))
+    with open(pai_json) as fn:
+        cfg = json.load(fn)
+    client = Client(**cfg)
+    job = Job.simple(name.replace(' ', '_'), image, command='ipython code/{}.py'.format(name), resources=resources, use_uuid=True)
+    job.add_source_codes(sources+[name+'.py'], code_dir=remote_root)
+    return client.get_token().submit(job)

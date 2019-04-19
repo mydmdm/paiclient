@@ -1,6 +1,7 @@
 import os
 import re
 import uuid
+import json
 from paiclient.utils import update_obj, get_response
 from paiclient.storage import Storage
 
@@ -141,7 +142,7 @@ class Client:
             body = job.config, 
             allowed_status=[202]
         )
-        return job.config['jobName']
+        return '{}/job-detail.html?username={}&jobName={}'.format(self.pai_uri, self.user, job.config['jobName'])
 
     def jobs(self, jobName: str=None, name_only: bool=False):
         """
