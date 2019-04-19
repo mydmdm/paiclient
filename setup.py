@@ -9,6 +9,6 @@ setup(name='paiclient',
       license='MIT',
       packages=['paiclient'],
       install_requires=[
-          'simplejson',
+          'requests', 'hdfs',
       ],      
       zip_safe=False)
