@@ -148,7 +148,7 @@ class Client:
             body = job.config, 
             allowed_status=[202]
         )
-        return job['jobName']
+        return job.config['jobName']
 
     def get_job_link(self, job_name: str):
         return '{}/job-detail.html?username={}&jobName={}'.format(self.pai_uri, self.user, job_name)
