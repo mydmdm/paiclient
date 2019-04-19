@@ -50,7 +50,7 @@ def convert_to_script(nb_file: str):
     return name
 
 
-def submit_notebook(nb_file: str, pai_json: str, image: str, remote_root: str, resources: dict={}, sources: list=[]):
+def submit_notebook(client: Client, nb_file: str, image: str, remote_root: str, resources: dict={}, sources: list=[]):
     """
     submit a job with current notebook
     
@@ -61,9 +61,7 @@ def submit_notebook(nb_file: str, pai_json: str, image: str, remote_root: str, r
     """
     name = convert_to_script(nb_file)
     print('convert {} to {}.py'.format(nb_file, name))
-    with open(pai_json) as fn:
-        cfg = json.load(fn)
-    client = Client(**cfg)
+
     job = Job.simple(name.replace(' ', '_'), image, command='ipython code/{}.py'.format(name), resources=resources, use_uuid=True)
     job.add_source_codes(sources+[name+'.py'], code_dir=remote_root)
     return client.get_token().submit(job)

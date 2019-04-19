@@ -86,6 +86,12 @@ class Client:
         self.storages = []
         self.add_storage(hdfs_web_uri=hdfs_web_uri)
     
+    @staticmethod
+    def from_json(pai_json: str):
+        with open(pai_json) as fn:
+            cfg = json.load(fn)
+        return Client(**cfg)
+
     @property
     def storage(self):
         return self.storages[0] if len(self.storages) >0 else None
@@ -142,7 +148,10 @@ class Client:
             body = job.config, 
             allowed_status=[202]
         )
-        return '{}/job-detail.html?username={}&jobName={}'.format(self.pai_uri, self.user, job.config['jobName'])
+        return job['jobName']
+
+    def get_job_link(self, job_name: str):
+        return '{}/job-detail.html?username={}&jobName={}'.format(self.pai_uri, self.user, job_name)
 
     def jobs(self, jobName: str=None, name_only: bool=False):
         """
