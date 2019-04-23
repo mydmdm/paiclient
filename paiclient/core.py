@@ -176,7 +176,7 @@ class Client:
     @staticmethod
     def from_envs(**kwargs):
         keys = ['user', 'pai_uri', 'hdfs_web_uri']
-        dic = {k : os.environ.get('PAISKD_{}'.format(k.upper()), None) for k in keys}
+        dic = {k : os.environ.get('PAISDK_{}'.format(k.upper()), None) for k in keys}
         return Client(**dic)
 
     
