@@ -9,7 +9,7 @@ setup(name='paiclient',
     license='MIT',
     packages=['paiclient'],
     install_requires=[
-        'requests', 'hdfs',
+        'requests', 'hdfs', 'logging'
     ],      
     zip_safe=False
 )

@@ -1,6 +1,5 @@
 import os
 import re
-import uuid
 import json
 from paiclient.utils import update_obj, get_response
 from paiclient.storage import Storage
@@ -15,9 +14,20 @@ def in_job_container(varname: str='PAI_CONTAINER_ID'):
     return True
 
 
+def in_debug_mode(varname: str='DEBUG_MODE'):
+    """
+    Args:
+        varname (str, optional): [description]. Defaults to 'DEBUG_MODE'.
+    """
+    debug_flag = os.environ.get(varname, False)
+    if debug_flag in [True, 1] or isinstance(debug_flag, str) and debug_flag.lower() in ['true', '1', 'yes']:
+        return True
+    return False
+
+
 class Job:
 
-    def __init__(self, version: str='1.0', **kwargs):
+    def __init__(self, version: str='1.0', job_dir: str=None, **kwargs):
         self.config = dict()
         self.version = version
         if self.version == '1.0':
@@ -25,7 +35,7 @@ class Job:
                 self.config[k] = ''
             self.config.update(taskRoles=[], jobEnvs={})
         self.config.update(kwargs)
-        self.sources, self.code_dir, self.data_dir = [], None, None
+        self.sources, self.job_dir= [], job_dir
 
     @property
     def minimal_resources(self):
@@ -38,26 +48,8 @@ class Job:
         self.config['taskRoles'].append(task_role)
         return self
 
-    def add_source_codes(self, 
-        files, # type: Union[list[str], str]
-        code_dir: str=None
-        ):
-        """
-        [summary]
-        
-        Args:
-            files ([type]): [description]
-        
-        Returns:
-            [type]: [description]
-        """
-
-        self.sources.extend(files if isinstance(files, list) else [files])
-        self.code_dir = code_dir
-        return self
-
     @staticmethod
-    def simple(jobName: str, image: str, command: str, resources: dict={}, use_uuid: bool=True, **kwargs):
+    def simple(jobName: str, image: str, command: str, resources: dict={}, job_envs: dict={}, job_dir: str=None, **kwargs):
         """
         return a job config object from only necessary information
         
@@ -66,22 +58,21 @@ class Job:
             image (str): [description]
             command (str): [description]
             resources (dict, optional): Defaults to {}. [description]
-            use_uuid (bool, optional): Defaults to True. to add a uuid string after jobName to avoid name conflict
         
         Returns:
             [type]: [description]
         """
-        if use_uuid:
-            jobName += '_{}'.format(uuid.uuid4().hex) 
-        return Job(
-            jobName=jobName, image=image, **kwargs
+        job = Job(
+            jobName=jobName, image=image, job_dir=job_dir, **kwargs
         ).add_task_role(name='main', command=command, **resources)
+        job.config['jobEnvs'].update(job_envs)
+        return job
 
 
 class Client:
 
     def __init__(self, pai_uri: str, user: str=None, passwd: str=None, hdfs_web_uri: str=None):
-        self.pai_uri = pai_uri
+        self.pai_uri, self.hdfs_web_uri = pai_uri, hdfs_web_uri
         self.user, self.passwd = user, passwd
         self.storages = []
         self.add_storage(hdfs_web_uri=hdfs_web_uri)
@@ -119,7 +110,7 @@ class Client:
         ).json()['token']
         return self
 
-    def submit(self, job: Job, allow_job_in_job: bool=False):
+    def submit(self, job: Job, allow_job_in_job: bool=False, append_pai_info: bool=True):
         """
         [summary]
         
@@ -133,12 +124,14 @@ class Client:
 
         if not allow_job_in_job:
             assert not in_job_container(), 'not allowed submiting jobs inside a job'
+        if append_pai_info:
+            job.config.setdefault('jobEnvs', {}).update(self.to_envs())
         if len(job.sources) > 0:
-            assert job.code_dir, 'codeDir not specified'
-            remote_root = '{}/{}/code'.format(job.code_dir, job.config['jobName'])
-            job.config['codeDir'] = "$PAI_DEFAULT_FS_URI{}".format(remote_root)
+            assert job.job_dir, 'job directory not specified'
+            code_dir = '{}/code'.format(job.job_dir)
+            job.config['codeDir'] = "$PAI_DEFAULT_FS_URI{}".format(code_dir)
             for file in job.sources:
-                self.storage.upload(local_path=file, remote_path='{}/{}'.format(remote_root, file))
+                self.storage.upload(local_path=file, remote_path='{}/{}'.format(code_dir, file))
         get_response(
             '{}/rest-server/api/v1/user/{}/jobs'.format(self.pai_uri, self.user),
             headers = {
@@ -173,8 +166,17 @@ class Client:
         return [j['name'] for j in job_list] if name_only else job_list
 
 
+    def to_envs(self):
+        """to pass necessary information to job container via environmental variables
+        """
+        keys = ['user', 'pai_uri', 'hdfs_web_uri']
+        dic = {'PAISDK_{}'.format(k.upper()) : getattr(self, k) for k in keys}
+        return dic
+
     @staticmethod
-    def from_envrons(**kwargs):
-        return PAI(user=os.environ['PAI_USER_NAME'], ip=get_ip(os.environ['PAI_DEFAULT_FS_URI']), **kwargs)
+    def from_envs(**kwargs):
+        keys = ['user', 'pai_uri', 'hdfs_web_uri']
+        dic = {k : os.environ.get('PAISKD_{}'.format(k.upper()), None) for k in keys}
+        return Client(**dic)
 
     
