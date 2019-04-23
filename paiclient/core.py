@@ -126,6 +126,8 @@ class Client:
             assert not in_job_container(), 'not allowed submiting jobs inside a job'
         if append_pai_info:
             job.config.setdefault('jobEnvs', {}).update(self.to_envs())
+        if job.job_dir:
+            job.config['jobEnvs']['PAISDK_JOB_DIR'] = job.job_dir
         if len(job.sources) > 0:
             assert job.job_dir, 'job directory not specified'
             code_dir = '{}/code'.format(job.job_dir)
